@@ -1,0 +1,57 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.env
+
+# Node
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/settings.json
+.idea/
+```
+
+---
+
+## ✅ Verificación Final — Checklist
+
+Confirma que tienes esto funcionando antes de seguir:
+```
+✅ backend/venv activado y dependencias instaladas
+✅ http://localhost:8000/api/health responde OK
+✅ http://localhost:3000 carga Next.js
+✅ Base de datos skillforge_db creada en MySQL
+✅ Archivos .env creados (backend y frontend)
+```
+
+---
+
+## 📁 Estado actual del proyecto
+```
+skillforge/
+├── .gitignore
+├── backend/
+│   ├── venv/
+│   ├── app/
+│   │   ├── main.py          ✅
+│   │   ├── core/config.py   ✅
+│   │   ├── db/session.py    ✅
+│   │   └── db/base.py       ✅
+│   ├── .env                 ✅
+│   └── requirements.txt     ✅
+└── frontend/
+    ├── src/
+    │   ├── app/layout.tsx   ✅
+    │   ├── app/providers.tsx✅
+    │   ├── lib/api/client.ts✅
+    │   ├── lib/utils.ts     ✅
+    │   └── types/api.ts     ✅
+    └── .env.local           ✅
