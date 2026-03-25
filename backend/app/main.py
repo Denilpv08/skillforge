@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.api.v1 import auth  # nuevo
 
 app = FastAPI(
     title=settings.app_name,
@@ -9,7 +10,6 @@ app = FastAPI(
     redoc_url="/api/redoc" if settings.debug else None,
 )
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
@@ -17,6 +17,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Registrar routers
+app.include_router(auth.router, prefix="/api/v1")
 
 
 @app.get("/api/health")
