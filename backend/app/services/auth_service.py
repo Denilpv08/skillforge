@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from jose import JWTError
+from sqlalchemy.exc import IntegrityError
 import re
 
 from app.models.user import User, UserRole
@@ -32,27 +33,37 @@ class AuthService:
         if self.org_repo.get_by_slug(slug):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Organization name already taken",
+                detail=(
+                    "Organization already exists. "
+                    f"Try another name or login with organization slug: {slug}"
+                ),
             )
 
-        # Crear organización SIN commit todavía
-        org = Organization(name=data.organization_name, slug=slug)
-        self.org_repo.db.add(org)
-        self.org_repo.db.flush()  # ← genera el ID sin hacer commit
+        try:
+            # Crear organización SIN commit todavía
+            org = Organization(name=data.organization_name, slug=slug)
+            self.org_repo.db.add(org)
+            self.org_repo.db.flush()  # genera el ID sin hacer commit
 
-        # Crear usuario SIN commit todavía
-        user = User(
-            organization_id=org.id,
-            email=data.email,
-            password_hash=hash_password(data.password),
-            full_name=data.full_name,
-            role=UserRole.ADMIN,
-        )
-        self.org_repo.db.add(user)
+            # Crear usuario SIN commit todavía
+            user = User(
+                organization_id=org.id,
+                email=data.email,
+                password_hash=hash_password(data.password),
+                full_name=data.full_name,
+                role=UserRole.ADMIN,
+            )
+            self.org_repo.db.add(user)
 
-        # Un solo commit atómico — si algo falla, NADA se guarda
-        self.org_repo.db.commit()
-        self.org_repo.db.refresh(user)
+            # Un solo commit atómico — si algo falla, NADA se guarda
+            self.org_repo.db.commit()
+            self.org_repo.db.refresh(user)
+        except IntegrityError:
+            self.org_repo.db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Could not register due to duplicated organization or user data",
+            )
 
         return self._build_token_response(user)
 

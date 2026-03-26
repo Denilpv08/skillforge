@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import auth  # nuevo
+from app.api.v1 import auth, courses, enrollments, quizzes
 
 app = FastAPI(
     title=settings.app_name,
@@ -18,8 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Registrar routers
-app.include_router(auth.router, prefix="/api/v1")
+app.include_router(auth.router,        prefix="/api/v1")
+app.include_router(courses.router,     prefix="/api/v1")
+app.include_router(enrollments.router, prefix="/api/v1")
+app.include_router(quizzes.router,     prefix="/api/v1")
 
 
 @app.get("/api/health")

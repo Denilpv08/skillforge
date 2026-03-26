@@ -4,31 +4,34 @@ const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export const apiClient = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
   timeout: 10000,
 });
 
-// Request interceptor — adjunta el token automáticamente
+// Request interceptor — adjunta token desde localStorage
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Leemos directamente de localStorage para evitar
+    // dependencias circulares con el store de Zustand
+    const raw = localStorage.getItem("skillforge-auth");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const token = parsed?.state?.accessToken;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
     return config;
   },
   (error) => Promise.reject(error),
 );
 
-// Response interceptor — manejo centralizado de errores
+// Response interceptor — manejo global de 401
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
+  (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Token expirado — limpiar sesión y redirigir
-      localStorage.removeItem("access_token");
+      localStorage.removeItem("skillforge-auth");
       window.location.href = "/login";
     }
     return Promise.reject(error);
