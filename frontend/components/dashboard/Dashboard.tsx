@@ -70,7 +70,7 @@ const Dashboard = () => {
         <CardContent className="py-12 text-center">
           <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">
-            Aún no hay actividad registrada
+            Aún no hay actividad registradaa
           </p>
           <p className="text-sm text-gray-400 mt-1">
             Inscríbete en un curso para empezar
