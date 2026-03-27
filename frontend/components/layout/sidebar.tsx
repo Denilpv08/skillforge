@@ -1,35 +1,19 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BookOpen,
-  LayoutDashboard,
-  GraduationCap,
-  Map,
-  User,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
 import { useAuthStore } from "@/store/auth-store";
-
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/courses", label: "Cursos", icon: BookOpen },
-  {
-    href: "/dashboard/my-learning",
-    label: "Mi aprendizaje",
-    icon: GraduationCap,
-  },
-  { href: "/dashboard/paths", label: "Rutas", icon: Map },
-  { href: "/dashboard/profile", label: "Perfil", icon: User },
-];
+import { usePermissions } from "@/hooks/use-permissions";
+import { getNavItems } from "./navItem";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarOpen, toggleSidebar } = useUIStore();
   const { user } = useAuthStore();
+  const permissions = usePermissions();
+  const navItems = getNavItems(permissions.canManageUsers);
 
   return (
     <aside
@@ -83,10 +67,10 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* Toggle button */}
+      {/* Toggle */}
       <button
         onClick={toggleSidebar}
-        className="absolute -right-3 top-7 w-6 h-6 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center hover:bg-gray-600 transition-colors cursor-pointer"
+        className="absolute -right-3 top-7 w-6 h-6 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center hover:bg-gray-600 transition-colors"
       >
         {sidebarOpen ? (
           <ChevronLeft className="w-3 h-3" />

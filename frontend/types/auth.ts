@@ -28,3 +28,13 @@ export interface RegisterPayload {
   full_name: string;
   organization_name: string;
 }
+
+export interface UserListItem {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  is_active: boolean;
+  organization_id: string;
+  avatar_url: string | null;
+}

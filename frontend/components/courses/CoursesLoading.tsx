@@ -1,4 +1,4 @@
-export default function CoursesLoading() {
+const CoursesLoading = () => {
   return (
     <div className="space-y-6 animate-pulse">
       <div className="flex justify-between">
@@ -13,4 +13,6 @@ export default function CoursesLoading() {
       </div>
     </div>
   );
-}
+};
+
+export default CoursesLoading;

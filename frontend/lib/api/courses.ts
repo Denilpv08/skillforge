@@ -1,3 +1,4 @@
+import axios from "axios";
 import { apiClient } from "./client";
 import {
   Course,
@@ -5,6 +6,7 @@ import {
   PaginatedCourses,
   Category,
   Enrollment,
+  Lesson,
 } from "@/types/course";
 
 interface CourseFilters {
@@ -90,5 +92,102 @@ export const coursesApi = {
       `/enrollments/${courseId}/lessons/${lessonId}/complete`,
     );
     return data;
+  },
+
+  // Categorías
+  updateCategory: async (
+    categoryId: string,
+    payload: { name: string; description?: string },
+  ): Promise<Category> => {
+    const { data } = await apiClient.patch<Category>(
+      `/courses/categories/${categoryId}`,
+      payload,
+    );
+    return data;
+  },
+
+  deleteCategory: async (categoryId: string): Promise<void> => {
+    await apiClient.delete(`/courses/categories/${categoryId}`);
+  },
+
+  // Estado de curso
+  changeCourseStatus: async (
+    courseId: string,
+    status: string,
+  ): Promise<Course> => {
+    try {
+      const { data } = await apiClient.patch<Course>(
+        `/courses/${courseId}/status`,
+        { status },
+      );
+      return data;
+    } catch (error) {
+      if (
+        axios.isAxiosError(error) &&
+        (error.response?.status === 404 || error.response?.status === 405)
+      ) {
+        const { data } = await apiClient.patch<Course>(`/courses/${courseId}`, {
+          status,
+        });
+        return data;
+      }
+      throw error;
+    }
+  },
+
+  // Lecciones
+  getLesson: async (courseId: string, lessonId: string): Promise<Lesson> => {
+    const { data } = await apiClient.get<Lesson>(
+      `/courses/${courseId}/lessons/${lessonId}`,
+    );
+    return data;
+  },
+
+  createLesson: async (
+    courseId: string,
+    payload: {
+      title: string;
+      content?: string;
+      video_url?: string;
+      order_index?: number;
+      duration_min?: number;
+      is_free?: boolean;
+    },
+  ): Promise<Lesson> => {
+    const { data } = await apiClient.post<Lesson>(
+      `/courses/${courseId}/lessons`,
+      payload,
+    );
+    return data;
+  },
+
+  updateLesson: async (
+    courseId: string,
+    lessonId: string,
+    payload: Partial<{
+      title: string;
+      content: string;
+      video_url: string;
+      order_index: number;
+      duration_min: number;
+      is_free: boolean;
+    }>,
+  ): Promise<Lesson> => {
+    const { data } = await apiClient.patch<Lesson>(
+      `/courses/${courseId}/lessons/${lessonId}`,
+      payload,
+    );
+    return data;
+  },
+
+  deleteLesson: async (courseId: string, lessonId: string): Promise<void> => {
+    await apiClient.delete(`/courses/${courseId}/lessons/${lessonId}`);
+  },
+
+  reorderLessons: async (
+    courseId: string,
+    lessonIds: string[],
+  ): Promise<void> => {
+    await apiClient.put(`/courses/${courseId}/lessons/reorder`, lessonIds);
   },
 };
