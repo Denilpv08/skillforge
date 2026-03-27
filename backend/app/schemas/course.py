@@ -74,3 +74,6 @@ class CourseOut(BaseModel):
 class CourseDetail(CourseOut):
     """CourseOut + lecciones — usado en el detalle del curso."""
     lessons: list[LessonOut] = []
+    
+class CourseStatusUpdate(BaseModel):
+    status: CourseStatus

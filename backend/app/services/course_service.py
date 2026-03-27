@@ -172,3 +172,19 @@ class CourseService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to modify this course",
             )
+    
+    def change_status(
+        self,
+        course_id: str,
+        new_status: CourseStatus,
+        org_id: str,
+        current_user: User,
+    ) -> Course:
+        course = self.get_by_id(course_id, org_id)
+        self._check_ownership(course, current_user)
+
+        if course.status == new_status:
+            return course
+
+        course.status = new_status
+        return self.repo.update(course)

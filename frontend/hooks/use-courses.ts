@@ -130,3 +130,113 @@ export function useCompleteLesson() {
     },
   });
 }
+
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      coursesApi.updateCategory(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.categories });
+      toast.success("Categoría actualizada");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? "Error al actualizar");
+    },
+  });
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: coursesApi.deleteCategory,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.categories });
+      toast.success("Categoría eliminada");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? "Error al eliminar");
+    },
+  });
+}
+
+export function useChangeCourseStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ courseId, status }: { courseId: string; status: string }) =>
+      coursesApi.changeCourseStatus(courseId, status),
+    onSuccess: (_, { courseId }) => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: courseKeys.all });
+      toast.success("Estado del curso actualizado");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? "Error al cambiar estado");
+    },
+  });
+}
+
+export function useLesson(courseId: string, lessonId: string) {
+  return useQuery({
+    queryKey: ["lesson", courseId, lessonId],
+    queryFn: () => coursesApi.getLesson(courseId, lessonId),
+    enabled: !!courseId && !!lessonId,
+  });
+}
+
+export function useCreateLesson(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => coursesApi.createLesson(courseId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      toast.success("Lección creada");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? "Error al crear lección");
+    },
+  });
+}
+
+export function useUpdateLesson(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ lessonId, data }: { lessonId: string; data: any }) =>
+      coursesApi.updateLesson(courseId, lessonId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      toast.success("Lección actualizada");
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.detail ?? "Error al actualizar lección",
+      );
+    },
+  });
+}
+
+export function useDeleteLesson(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (lessonId: string) =>
+      coursesApi.deleteLesson(courseId, lessonId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      toast.success("Lección eliminada");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? "Error al eliminar");
+    },
+  });
+}
+
+export function useReorderLessons(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (lessonIds: string[]) =>
+      coursesApi.reorderLessons(courseId, lessonIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+    },
+  });
+}
