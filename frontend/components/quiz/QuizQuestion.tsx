@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "../ui/card";
+import { Button } from "../ui/button";
 
 interface QuizQuestionProps {
   question: {
@@ -25,14 +26,16 @@ const QuizQuestion = ({
           <span className="shrink-0 w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-bold">
             {qIdx + 1}
           </span>
-          <p className="font-medium text-gray-800 pt-0.5">{question.text}</p>
+          <p className="font-medium hover:text-white text-gray-800 pt-0.5">
+            {question.text}
+          </p>
         </div>
       </CardHeader>
       <CardContent className="space-y-2 pt-0">
         {question.answer_options.map((option) => {
           const selected = answers[question.id] === option.id;
           return (
-            <button
+            <Button
               key={option.id}
               onClick={() =>
                 setAnswers((prev) => ({
@@ -58,7 +61,7 @@ const QuizQuestion = ({
                 />
                 {option.text}
               </div>
-            </button>
+            </Button>
           );
         })}
       </CardContent>
