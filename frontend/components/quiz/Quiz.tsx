@@ -1,179 +1,114 @@
 "use client";
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
-import { quizzesApi } from "@/lib/api/quizzes";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
-import QuizResult from "./QuizResult";
-import QuizQuestion from "./QuizQuestion";
-import { useMyAttempts } from "@/hooks/use-quizzes";
-import { Badge } from "../ui/badge";
-import { formatDate } from "@/lib/utils";
+import { useQuiz, useMyAttempts } from "@/hooks/use-quizzes";
+import { cn } from "@/lib/utils";
+import ResultScreen from "./ResultScreen";
+import QuizScreen from "./QuizScreen";
+import AttemptsHistory from "./AttemptsHistory";
 
-const Quiz = () => {
-  const { id } = useParams<{ id: string }>();
+// ─── Página principal ─────────────────────────────────────────
+export default function QuizPage() {
+  const { id: quizId } = useParams<{ id: string }>();
   const router = useRouter();
 
-  // Respuestas seleccionadas: { questionId: optionId }
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [result, setResult] = useState<{
-    score: number;
-    passed: boolean;
-  } | null>(null);
+  const { data: quiz, isLoading } = useQuiz(quizId);
+  const { data: attempts = [] } = useMyAttempts(quizId);
 
-  const { data: attempts = [] } = useMyAttempts(id);
+  type Screen = "history" | "quiz" | "result";
+  const [screen, setScreen] = useState<Screen>("history");
+  const [lastAttemptId, setLastAttemptId] = useState<string | null>(null);
 
-  const hasPassedAlready = attempts.some((a) => a.passed);
-
-  const { data: quiz, isLoading } = useQuery({
-    queryKey: ["quiz", id],
-    queryFn: () => quizzesApi.getQuiz(id),
-  });
+  const hasPassed = attempts.some((a) => a.passed);
   const attemptsLeft = quiz ? quiz.max_attempts - attempts.length : 0;
+  const canRetry = attemptsLeft > 0 && !hasPassed;
 
-  const submit = useMutation({
-    mutationFn: () => quizzesApi.submitQuiz(id, answers),
-    onSuccess: (data) => {
-      setResult({ score: data.score, passed: data.passed });
-    },
-    onError: (error: any) => {
-      toast.error(error?.response?.data?.detail ?? "Error al enviar");
-    },
-  });
-
-  const totalQuestions = quiz?.questions.length ?? 0;
-  const answeredCount = Object.keys(answers).length;
-  const progressPct =
-    totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
+  const handleQuizComplete = (attemptId: string) => {
+    setLastAttemptId(attemptId);
+    setScreen("result");
+  };
 
   if (isLoading) {
     return (
       <div className="space-y-4 animate-pulse max-w-2xl">
-        <div className="h-8 w-64 bg-gray-200 rounded" />
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-36 bg-gray-200 rounded-xl" />
-        ))}
+        <div className="h-8 w-48 bg-gray-200 rounded" />
+        <div className="h-24 bg-gray-200 rounded-2xl" />
+        <div className="h-48 bg-gray-200 rounded-2xl" />
       </div>
     );
   }
 
-  if (!quiz) return null;
-
-  // ── Pantalla de resultado ──────────────────────────────────
-  if (result) {
+  if (!quiz) {
     return (
-      <QuizResult
-        result={result}
-        passScore={quiz.pass_score}
-        setAnswers={setAnswers}
-        setResult={setResult}
-      />
+      <div className="text-center py-20 text-gray-500">Quiz no encontrado</div>
     );
   }
 
   return (
-    <div className="w-full space-y-6">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button
-          onClick={() => router.back()}
-          className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-500 transition-colors"
+        <button
+          onClick={() => {
+            if (screen !== "history") {
+              setScreen("history");
+            } else {
+              router.back();
+            }
+          }}
+          className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex-1">
+        </button>
+        <div>
           <h1 className="text-xl font-bold text-gray-900">{quiz.title}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Puntuación mínima: {quiz.pass_score}%
+          <p className="text-sm text-gray-400">
+            {screen === "history" && "Historial de intentos"}
+            {screen === "quiz" && "Respondiendo quiz"}
+            {screen === "result" && "Resultado del intento"}
           </p>
+        </div>
+
+        {/* Indicador de pantalla */}
+        <div className="ml-auto flex gap-1.5">
+          {(["history", "quiz", "result"] as Screen[]).map((s) => (
+            <div
+              key={s}
+              className={cn(
+                "h-1.5 rounded-full transition-all",
+                screen === s ? "w-6 bg-indigo-600" : "w-1.5 bg-gray-200",
+              )}
+            />
+          ))}
         </div>
       </div>
 
-      {/* Progreso de respuestas */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-sm text-gray-500">
-          <span>Progreso del quiz</span>
-          <span>
-            {answeredCount} / {totalQuestions}
-          </span>
-        </div>
-        <Progress value={progressPct} />
-      </div>
-
-      {attempts.length > 0 && !result && (
-        <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-600">
-            Intentos anteriores
-          </p>
-          <div className="space-y-1.5">
-            {attempts.map((attempt) => (
-              <div
-                key={attempt.id}
-                className="flex items-center justify-between px-4 py-2.5
-            bg-gray-50 rounded-xl border border-gray-200 text-sm"
-              >
-                <span className="text-gray-500 text-xs">
-                  {formatDate(attempt.attempted_at)}
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-gray-800">
-                    {attempt.score}%
-                  </span>
-                  {attempt.passed ? (
-                    <Badge variant="success">Aprobó</Badge>
-                  ) : (
-                    <Badge variant="danger">Reprobó</Badge>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-gray-400 text-right">
-            {attemptsLeft > 0
-              ? `${attemptsLeft} intento(s) restante(s)`
-              : "No te quedan más intentos"}
-          </p>
-        </div>
+      {/* Contenido según pantalla */}
+      {screen === "history" && (
+        <AttemptsHistory
+          quizId={quizId}
+          passScore={quiz.pass_score}
+          maxAttempts={quiz.max_attempts}
+          onStartQuiz={() => setScreen("quiz")}
+        />
       )}
 
-      {/* Preguntas */}
-      {quiz.questions.map((question, qIdx) => (
-        <QuizQuestion
-          key={question.id}
-          question={question}
-          qIdx={qIdx}
-          answers={answers}
-          setAnswers={setAnswers}
-        />
-      ))}
+      {screen === "quiz" && (
+        <QuizScreen quizId={quizId} onComplete={handleQuizComplete} />
+      )}
 
-      {/* Submit */}
-      <div className="sticky bottom-4">
-        <Button
-          className="w-full shadow-lg"
-          size="lg"
-          onClick={() => submit.mutate()}
-          loading={submit.isPending}
-          disabled={
-            answeredCount < totalQuestions ||
-            attemptsLeft <= 0 ||
-            hasPassedAlready
-          }
-        >
-          {hasPassedAlready
-            ? "¡Ya aprobaste este quiz!"
-            : attemptsLeft <= 0
-              ? "Sin intentos disponibles"
-              : answeredCount < totalQuestions
-                ? `Responde ${totalQuestions - answeredCount} pregunta(s) más`
-                : "Enviar respuestas"}
-        </Button>
-      </div>
+      {screen === "result" && lastAttemptId && (
+        <ResultScreen
+          attemptId={lastAttemptId}
+          onRetry={() => {
+            setLastAttemptId(null);
+            setScreen("quiz");
+          }}
+          onBack={() => router.back()}
+          canRetry={canRetry}
+        />
+      )}
     </div>
   );
-};
-
-export default Quiz;
+}

@@ -58,3 +58,22 @@ class QuizAttemptOut(BaseModel):
     attempted_at: datetime
 
     model_config = {"from_attributes": True}
+    
+class AnswerReview(BaseModel):
+    """Revisión de una respuesta tras el intento."""
+    question_id: str
+    question_text: str
+    selected_option_id: str | None
+    selected_option_text: str | None
+    correct_option_id: str
+    correct_option_text: str
+    is_correct: bool
+
+class QuizAttemptDetail(BaseModel):
+    id: str
+    score: float
+    passed: bool
+    attempted_at: datetime
+    answers_review: list[AnswerReview]
+
+    model_config = {"from_attributes": True}

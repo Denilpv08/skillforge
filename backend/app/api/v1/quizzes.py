@@ -5,7 +5,7 @@ from app.core.dependencies import get_db, get_current_user, require_roles
 from app.models.user import User, UserRole
 from app.models.quiz import Quiz, Question, AnswerOption, QuizAttempt
 from app.schemas.quiz import (
-    QuizCreate, QuizOut, QuizSubmit, QuizAttemptOut
+    QuizCreate, QuizOut, QuizSubmit, QuizAttemptOut, QuizAttemptDetail, AnswerReview
 )
 from app.services.quiz_service import QuizService
 from app.repositories.quiz_repository import QuizRepository
@@ -163,3 +163,72 @@ def get_quiz_results(
             for a in attempts
         ],
     }
+    
+@router.get(
+    "/attempts/{attempt_id}",
+    response_model=QuizAttemptDetail,
+)
+def get_attempt_detail(
+    attempt_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Devuelve el detalle completo de un intento:
+    qué respondió el usuario y cuáles eran las respuestas correctas.
+    Solo el dueño del intento puede verlo.
+    """
+    repo = QuizRepository(db)
+
+    # Buscar el intento
+    from sqlalchemy import select
+    from app.models.quiz import QuizAttempt
+    stmt = select(QuizAttempt).where(QuizAttempt.id == attempt_id)
+    attempt = db.execute(stmt).scalar_one_or_none()
+
+    if not attempt:
+        raise HTTPException(status_code=404, detail="Attempt not found")
+
+    # Solo el dueño puede ver su intento
+    if attempt.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    quiz = repo.get_with_questions(attempt.quiz_id)
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    # Construir revisión
+    answers_snapshot: dict = attempt.answers_json
+    reviews = []
+
+    for question in quiz.questions:
+        selected_id = answers_snapshot.get(question.id)
+
+        # Encontrar opción seleccionada y correcta
+        selected_option = next(
+            (o for o in question.answer_options if o.id == selected_id),
+            None,
+        )
+        correct_option = next(
+            (o for o in question.answer_options if o.is_correct),
+            None,
+        )
+
+        if correct_option:
+            reviews.append(AnswerReview(
+                question_id=question.id,
+                question_text=question.text,
+                selected_option_id=selected_id,
+                selected_option_text=selected_option.text if selected_option else None,
+                correct_option_id=correct_option.id,
+                correct_option_text=correct_option.text,
+                is_correct=selected_id == correct_option.id,
+            ))
+
+    return QuizAttemptDetail(
+        id=attempt.id,
+        score=float(attempt.score),
+        passed=attempt.passed,
+        attempted_at=attempt.attempted_at,
+        answers_review=reviews,
+    )

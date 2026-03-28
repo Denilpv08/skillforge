@@ -60,6 +60,24 @@ export interface CreateQuizPayload {
   }[];
 }
 
+export interface AnswerReview {
+  question_id: string;
+  question_text: string;
+  selected_option_id: string | null;
+  selected_option_text: string | null;
+  correct_option_id: string;
+  correct_option_text: string;
+  is_correct: boolean;
+}
+
+export interface QuizAttemptDetail {
+  id: string;
+  score: number;
+  passed: boolean;
+  attempted_at: string;
+  answers_review: AnswerReview[];
+}
+
 export const quizzesApi = {
   listByCourse: async (courseId: string): Promise<QuizOut[]> => {
     const { data } = await apiClient.get<QuizOut[]>(
@@ -109,6 +127,13 @@ export const quizzesApi = {
   getResults: async (quizId: string): Promise<QuizResults> => {
     const { data } = await apiClient.get<QuizResults>(
       `/quizzes/${quizId}/results`,
+    );
+    return data;
+  },
+
+  getAttemptDetail: async (attemptId: string): Promise<QuizAttemptDetail> => {
+    const { data } = await apiClient.get<QuizAttemptDetail>(
+      `/quizzes/attempts/${attemptId}`,
     );
     return data;
   },

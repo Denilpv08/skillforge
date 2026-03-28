@@ -85,3 +85,11 @@ export function useSubmitQuiz(quizId: string) {
     },
   });
 }
+
+export function useAttemptDetail(attemptId: string | null) {
+  return useQuery({
+    queryKey: ["quizzes", "attempt", attemptId],
+    queryFn: () => quizzesApi.getAttemptDetail(attemptId!),
+    enabled: !!attemptId,
+  });
+}
