@@ -49,3 +49,17 @@ export interface Enrollment {
   progress_pct: number;
   course: Course;
 }
+
+export interface LearningPathCourseItem {
+  course: Course;
+  order_index: number;
+  is_required: boolean;
+}
+
+export interface LearningPath {
+  id: string;
+  title: string;
+  slug: string;
+  description: string | null;
+  path_courses: LearningPathCourseItem[];
+}
