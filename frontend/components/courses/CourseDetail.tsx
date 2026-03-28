@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CourseStatusControl } from "@/components/courses/course-status-control";
 import { usePermissions } from "@/hooks/use-permissions";
 import { LessonManager } from "@/components/courses/lesson-manager";
+import { QuizManager } from "./quiz-manager";
 
 const CourseDetail = () => {
   const permissions = usePermissions();
@@ -139,6 +140,15 @@ const CourseDetail = () => {
             lessons={course.lessons}
             canEdit={canEdit}
           />
+        </div>
+      </Card>
+
+      <Card>
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900">Evaluaciones</h2>
+        </div>
+        <div className="px-6 py-4">
+          <QuizManager courseId={course.id} canManage={canEdit} />
         </div>
       </Card>
     </div>

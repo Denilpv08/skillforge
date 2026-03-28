@@ -53,3 +53,9 @@ class QuizRepository:
         self.db.commit()
         self.db.refresh(attempt)
         return attempt
+    
+    def get_all_attempts(self, quiz_id: str) -> list[QuizAttempt]:
+        stmt = select(QuizAttempt).where(
+            QuizAttempt.quiz_id == quiz_id
+        ).order_by(QuizAttempt.attempted_at.desc())
+        return list(self.db.execute(stmt).scalars().all())

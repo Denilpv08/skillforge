@@ -2,15 +2,16 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { XCircle, ChevronLeft, Trophy } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { quizzesApi } from "@/lib/api/quizzes";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import QuizResult from "./QuizResult";
 import QuizQuestion from "./QuizQuestion";
+import { useMyAttempts } from "@/hooks/use-quizzes";
+import { Badge } from "../ui/badge";
+import { formatDate } from "@/lib/utils";
 
 const Quiz = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,10 +24,15 @@ const Quiz = () => {
     passed: boolean;
   } | null>(null);
 
+  const { data: attempts = [] } = useMyAttempts(id);
+
+  const hasPassedAlready = attempts.some((a) => a.passed);
+
   const { data: quiz, isLoading } = useQuery({
     queryKey: ["quiz", id],
     queryFn: () => quizzesApi.getQuiz(id),
   });
+  const attemptsLeft = quiz ? quiz.max_attempts - attempts.length : 0;
 
   const submit = useMutation({
     mutationFn: () => quizzesApi.submitQuiz(id, answers),
@@ -69,15 +75,15 @@ const Quiz = () => {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="w-full space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button
+        <Button
           onClick={() => router.back()}
-          className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+          className="p-2 rounded-lg bg-gray-50 hover:bg-gray-100 text-gray-500 transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
-        </button>
+        </Button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">{quiz.title}</h1>
           <p className="text-sm text-gray-500 mt-0.5">
@@ -97,6 +103,42 @@ const Quiz = () => {
         <Progress value={progressPct} />
       </div>
 
+      {attempts.length > 0 && !result && (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-gray-600">
+            Intentos anteriores
+          </p>
+          <div className="space-y-1.5">
+            {attempts.map((attempt) => (
+              <div
+                key={attempt.id}
+                className="flex items-center justify-between px-4 py-2.5
+            bg-gray-50 rounded-xl border border-gray-200 text-sm"
+              >
+                <span className="text-gray-500 text-xs">
+                  {formatDate(attempt.attempted_at)}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-gray-800">
+                    {attempt.score}%
+                  </span>
+                  {attempt.passed ? (
+                    <Badge variant="success">Aprobó</Badge>
+                  ) : (
+                    <Badge variant="danger">Reprobó</Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 text-right">
+            {attemptsLeft > 0
+              ? `${attemptsLeft} intento(s) restante(s)`
+              : "No te quedan más intentos"}
+          </p>
+        </div>
+      )}
+
       {/* Preguntas */}
       {quiz.questions.map((question, qIdx) => (
         <QuizQuestion
@@ -115,11 +157,19 @@ const Quiz = () => {
           size="lg"
           onClick={() => submit.mutate()}
           loading={submit.isPending}
-          disabled={answeredCount < totalQuestions}
+          disabled={
+            answeredCount < totalQuestions ||
+            attemptsLeft <= 0 ||
+            hasPassedAlready
+          }
         >
-          {answeredCount < totalQuestions
-            ? `Responde ${totalQuestions - answeredCount} pregunta(s) más`
-            : "Enviar respuestas"}
+          {hasPassedAlready
+            ? "¡Ya aprobaste este quiz!"
+            : attemptsLeft <= 0
+              ? "Sin intentos disponibles"
+              : answeredCount < totalQuestions
+                ? `Responde ${totalQuestions - answeredCount} pregunta(s) más`
+                : "Enviar respuestas"}
         </Button>
       </div>
     </div>
