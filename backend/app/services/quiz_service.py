@@ -33,6 +33,7 @@ class QuizService:
             title=data.title,
             pass_score=data.pass_score,
             max_attempts=data.max_attempts,
+            weight=data.weight,
         )
 
         for q_data in data.questions:

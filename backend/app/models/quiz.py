@@ -15,6 +15,7 @@ class Quiz(BaseModel):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     pass_score: Mapped[int] = mapped_column(SmallInteger, default=70, nullable=False)
     max_attempts: Mapped[int] = mapped_column(SmallInteger, default=3, nullable=False)
+    weight: Mapped[float | None] = mapped_column(DECIMAL(5, 2), nullable=True, default=1.0)
 
     course: Mapped["Course"] = relationship("Course", back_populates="quizzes")
     questions: Mapped[list["Question"]] = relationship(

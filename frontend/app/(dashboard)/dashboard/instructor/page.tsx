@@ -20,6 +20,11 @@ const sections = [
     description: "Monitorea tasas de aprobación y distribución de puntajes.",
   },
   {
+    href: "/dashboard/instructor/gradebook",
+    title: "Gradebook",
+    description: "Vista matricial de estudiantes vs quizzes con exportación.",
+  },
+  {
     href: "/dashboard/instructor/analytics",
     title: "Analíticas",
     description:
