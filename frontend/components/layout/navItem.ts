@@ -16,7 +16,10 @@ interface NavItem {
   show: boolean;
 }
 
-export function getNavItems(canManageUsers: boolean): NavItem[] {
+export function getNavItems(
+  canManageUsers: boolean,
+  isInstructor: boolean,
+): NavItem[] {
   return [
     {
       href: "/dashboard",
@@ -43,6 +46,12 @@ export function getNavItems(canManageUsers: boolean): NavItem[] {
       label: "Usuarios",
       icon: Users,
       show: canManageUsers,
+    },
+    {
+      href: "/dashboard/instructor",
+      label: "Instructor",
+      icon: GraduationCap,
+      show: isInstructor,
     },
     { href: "/dashboard/profile", label: "Perfil", icon: User, show: true },
   ].filter((item) => item.show);
