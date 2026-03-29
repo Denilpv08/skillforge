@@ -49,6 +49,9 @@ class User(BaseModel):
     quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(
         "QuizAttempt", back_populates="user", cascade="all, delete-orphan"
     )
+    notes: Mapped[list["Note"]] = relationship(
+        "Note", back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email} [{self.role}]>"

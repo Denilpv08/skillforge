@@ -104,3 +104,6 @@ class Lesson(BaseModel):
     progress_records: Mapped[list["LessonProgress"]] = relationship(
         "LessonProgress", back_populates="lesson", cascade="all, delete-orphan"
     )
+    notes: Mapped[list["Note"]] = relationship(
+        "Note", back_populates="lesson", cascade="all, delete-orphan"
+    )
