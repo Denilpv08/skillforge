@@ -13,7 +13,10 @@ export function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useUIStore();
   const { user } = useAuthStore();
   const permissions = usePermissions();
-  const navItems = getNavItems(permissions.canManageUsers);
+  const navItems = getNavItems(
+    permissions.canManageUsers,
+    permissions.isInstructor,
+  );
 
   return (
     <aside
