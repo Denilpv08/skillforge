@@ -1,7 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.v1 import auth, courses, enrollments, quizzes, users, learning_paths
+from app.api.v1 import (
+    analytics,
+    auth,
+    courses,
+    enrollments,
+    learning_paths,
+    quizzes,
+    users,
+)
 
 app = FastAPI(
     title=settings.app_name,
@@ -24,6 +32,7 @@ app.include_router(enrollments.router, prefix="/api/v1")
 app.include_router(quizzes.router,     prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(learning_paths.router, prefix="/api/v1")
+app.include_router(analytics.router, prefix="/api/v1")
 
 @app.get("/api/health")
 async def health_check():
