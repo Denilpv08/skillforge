@@ -35,6 +35,7 @@ class QuizCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     pass_score: int = Field(default=70, ge=0, le=100)
     max_attempts: int = Field(default=3, ge=1)
+    weight: float | None = Field(default=1.0, ge=0)
     questions: list[QuestionCreate] = Field(min_length=1)
 
 class QuizOut(BaseModel):
@@ -42,6 +43,7 @@ class QuizOut(BaseModel):
     title: str
     pass_score: int
     max_attempts: int
+    weight: float | None
     questions: list[QuestionOut]
 
     model_config = {"from_attributes": True}

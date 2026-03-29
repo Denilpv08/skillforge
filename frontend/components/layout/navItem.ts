@@ -1,8 +1,10 @@
 import {
+  Award,
   BookOpen,
   GraduationCap,
   LayoutDashboard,
   Map,
+  Sheet,
   Tag,
   User,
   Users,
@@ -34,6 +36,12 @@ export function getNavItems(
       icon: GraduationCap,
       show: true,
     },
+    {
+      href: "/dashboard/grades",
+      label: "Calificaciones",
+      icon: Award,
+      show: true,
+    },
     { href: "/dashboard/paths", label: "Rutas", icon: Map, show: true },
     {
       href: "/dashboard/categories",
@@ -51,6 +59,12 @@ export function getNavItems(
       href: "/dashboard/instructor",
       label: "Instructor",
       icon: GraduationCap,
+      show: isInstructor,
+    },
+    {
+      href: "/dashboard/instructor/gradebook",
+      label: "Gradebook",
+      icon: Sheet,
       show: isInstructor,
     },
     { href: "/dashboard/profile", label: "Perfil", icon: User, show: true },

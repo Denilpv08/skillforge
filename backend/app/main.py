@@ -7,6 +7,7 @@ from app.api.v1 import (
     classroom,
     courses,
     enrollments,
+    grades,
     instructor,
     learning_paths,
     quizzes,
@@ -37,6 +38,7 @@ app.include_router(learning_paths.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(instructor.router, prefix="/api/v1")
 app.include_router(classroom.router, prefix="/api/v1")
+app.include_router(grades.router, prefix="/api/v1")
 
 @app.get("/api/health")
 async def health_check():
