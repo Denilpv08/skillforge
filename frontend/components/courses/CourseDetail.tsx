@@ -109,6 +109,15 @@ const CourseDetail = () => {
                 <div className="text-center space-y-2 min-w-35">
                   <Progress value={Number(enrollment.progress_pct)} showLabel />
                   <p className="text-xs text-gray-500">Tu progreso</p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      router.push(`/dashboard/classroom/${course.id}`)
+                    }
+                  >
+                    Ir al classroom
+                  </Button>
                 </div>
               ) : (
                 <>

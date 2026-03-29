@@ -4,6 +4,7 @@ from app.core.config import settings
 from app.api.v1 import (
     analytics,
     auth,
+    classroom,
     courses,
     enrollments,
     instructor,
@@ -35,6 +36,7 @@ app.include_router(users.router, prefix="/api/v1")
 app.include_router(learning_paths.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
 app.include_router(instructor.router, prefix="/api/v1")
+app.include_router(classroom.router, prefix="/api/v1")
 
 @app.get("/api/health")
 async def health_check():

@@ -57,7 +57,7 @@ const MyLearning = () => {
                 {inProgress.map((enrollment) => (
                   <Link
                     key={enrollment.id}
-                    href={`/dashboard/courses/${enrollment.course_id}`}
+                    href={`/dashboard/classroom/${enrollment.course_id}`}
                   >
                     <Card className="hover:shadow-md transition-shadow cursor-pointer">
                       <CardContent className="flex items-center gap-5 py-4">

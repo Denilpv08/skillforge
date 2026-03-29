@@ -7,6 +7,7 @@ from app.models.course import Category, Course, Lesson, CourseStatus
 from app.models.enrollment import Enrollment, LessonProgress
 from app.models.quiz import Quiz, Question, AnswerOption, QuizAttempt
 from app.models.learning_path import LearningPath, LearningPathCourse
+from app.models.note import Note
 
 __all__ = [
     "BaseModel",
@@ -16,4 +17,5 @@ __all__ = [
     "Enrollment", "LessonProgress",
     "Quiz", "Question", "AnswerOption", "QuizAttempt",
     "LearningPath", "LearningPathCourse",
+    "Note",
 ]
