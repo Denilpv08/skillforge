@@ -190,4 +190,69 @@ export const coursesApi = {
   ): Promise<void> => {
     await apiClient.put(`/courses/${courseId}/lessons/reorder`, lessonIds);
   },
+
+  // Materiales de Lecciones
+  getMaterials: async (courseId: string, lessonId: string): Promise<any[]> => {
+    const { data } = await apiClient.get<any[]>(
+      `/courses/${courseId}/lessons/${lessonId}/materials`,
+    );
+    return data;
+  },
+
+  getMaterial: async (
+    courseId: string,
+    lessonId: string,
+    materialId: string,
+  ): Promise<any> => {
+    const { data } = await apiClient.get<any>(
+      `/courses/${courseId}/lessons/${lessonId}/materials/${materialId}`,
+    );
+    return data;
+  },
+
+  createMaterial: async (
+    courseId: string,
+    lessonId: string,
+    payload: any,
+  ): Promise<any> => {
+    const { data } = await apiClient.post<any>(
+      `/courses/${courseId}/lessons/${lessonId}/materials`,
+      payload,
+    );
+    return data;
+  },
+
+  updateMaterial: async (
+    courseId: string,
+    lessonId: string,
+    materialId: string,
+    payload: Partial<any>,
+  ): Promise<any> => {
+    const { data } = await apiClient.patch<any>(
+      `/courses/${courseId}/lessons/${lessonId}/materials/${materialId}`,
+      payload,
+    );
+    return data;
+  },
+
+  deleteMaterial: async (
+    courseId: string,
+    lessonId: string,
+    materialId: string,
+  ): Promise<void> => {
+    await apiClient.delete(
+      `/courses/${courseId}/lessons/${lessonId}/materials/${materialId}`,
+    );
+  },
+
+  reorderMaterials: async (
+    courseId: string,
+    lessonId: string,
+    materials: any[],
+  ): Promise<void> => {
+    await apiClient.put(
+      `/courses/${courseId}/lessons/${lessonId}/materials/reorder`,
+      { materials },
+    );
+  },
 };

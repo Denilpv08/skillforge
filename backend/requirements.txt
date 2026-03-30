@@ -28,8 +28,10 @@ python-multipart==0.0.12
 PyYAML==6.0.3
 rsa==4.9.1
 six==1.17.0
+slowapi==0.1.12
 SQLAlchemy==2.0.35
 starlette==0.38.6
+structlog==24.4.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 uvicorn==0.30.6

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from app.models.course import CourseStatus
+from app.models.course import CourseStatus, MaterialType
 
 # ─── Category ────────────────────────────────────────────────
 class CategoryCreate(BaseModel):
@@ -42,6 +42,10 @@ class LessonOut(BaseModel):
 
     model_config = {"from_attributes": True}
 
+class LessonDetail(LessonOut):
+    """LessonOut + materials"""
+    materials: list = []  # Will be populated with LessonMaterialOut
+
 # ─── Course ──────────────────────────────────────────────────
 class CourseCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
@@ -77,3 +81,38 @@ class CourseDetail(CourseOut):
     
 class CourseStatusUpdate(BaseModel):
     status: CourseStatus
+
+# ─── Lesson Material ─────────────────────────────────────────
+class LessonMaterialCreate(BaseModel):
+    type: MaterialType
+    title: str = Field(min_length=2, max_length=255)
+    url: str | None = Field(default=None, max_length=500)
+    content: str | None = None
+    order_index: int = Field(default=0, ge=0)
+    file_size_kb: int | None = Field(default=None, ge=0)
+    duration_sec: int | None = Field(default=None, ge=0)
+
+class LessonMaterialUpdate(BaseModel):
+    type: MaterialType | None = None
+    title: str | None = Field(default=None, min_length=2, max_length=255)
+    url: str | None = Field(default=None, max_length=500)
+    content: str | None = None
+    order_index: int | None = Field(default=None, ge=0)
+    file_size_kb: int | None = Field(default=None, ge=0)
+    duration_sec: int | None = Field(default=None, ge=0)
+
+class LessonMaterialOut(BaseModel):
+    id: str
+    lesson_id: str
+    type: MaterialType
+    title: str
+    url: str | None
+    content: str | None
+    order_index: int
+    file_size_kb: int | None
+    duration_sec: int | None
+
+    model_config = {"from_attributes": True}
+
+class LessonMaterialReorder(BaseModel):
+    materials: list[dict] = Field(..., description="List of {id, order_index}")

@@ -8,7 +8,8 @@ from app.models.course import CourseStatus
 from app.schemas.course import (
     CategoryCreate, CategoryOut,
     CourseCreate, CourseUpdate, CourseOut, CourseDetail,
-    LessonCreate, LessonUpdate, LessonOut, CourseStatusUpdate
+    LessonCreate, LessonUpdate, LessonOut, CourseStatusUpdate,
+    LessonMaterialCreate, LessonMaterialUpdate, LessonMaterialOut, LessonMaterialReorder
 )
 from app.schemas import common
 from app.services.course_service import CategoryService, CourseService
@@ -318,3 +319,261 @@ def reorder_lessons(
 
     db.commit()
     return {"message": "Lessons reordered successfully"}
+
+# ─── Lesson Materials ────────────────────────────────────────
+@router.post(
+    "/{course_id}/lessons/{lesson_id}/materials",
+    response_model=LessonMaterialOut,
+    status_code=201,
+    dependencies=[
+        Depends(require_roles(
+            UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR
+        ))
+    ],
+)
+def add_material(
+    course_id: str,
+    lesson_id: str,
+    data: LessonMaterialCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Add a new material to a lesson"""
+    from app.repositories.course_repository import CourseRepository, LessonRepository, LessonMaterialRepository
+    from app.models.course import LessonMaterial
+    import uuid
+    
+    # Verify course and lesson exist
+    course_repo = CourseRepository(db)
+    course = course_repo.get_by_id(course_id)
+    if not course or course.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    lesson_repo = LessonRepository(db)
+    lesson = lesson_repo.get_by_id(lesson_id)
+    if not lesson or lesson.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    # Create material
+    material = LessonMaterial(
+        id=str(uuid.uuid4()),
+        lesson_id=lesson_id,
+        type=data.type,
+        title=data.title,
+        url=data.url,
+        content=data.content,
+        order_index=data.order_index,
+        file_size_kb=data.file_size_kb,
+        duration_sec=data.duration_sec,
+    )
+    
+    material_repo = LessonMaterialRepository(db)
+    return material_repo.create(material)
+
+@router.get(
+    "/{course_id}/lessons/{lesson_id}/materials",
+    response_model=list[LessonMaterialOut],
+)
+def list_materials(
+    course_id: str,
+    lesson_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List all materials for a lesson"""
+    from app.repositories.course_repository import CourseRepository, LessonRepository, LessonMaterialRepository
+    from app.models.enrollment import EnrollmentRepository
+    
+    # Verify course and lesson exist
+    course_repo = CourseRepository(db)
+    course = course_repo.get_by_id(course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    lesson_repo = LessonRepository(db)
+    lesson = lesson_repo.get_by_id(lesson_id)
+    if not lesson or lesson.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    # Verify access
+    enrollment_repo = EnrollmentRepository(db)
+    enrollment = enrollment_repo.get_by_user_and_course(current_user.id, course_id)
+    is_instructor_or_admin = current_user.role.value in ("ADMIN", "SUPER_ADMIN", "INSTRUCTOR")
+    
+    if not enrollment and not lesson.is_free and not is_instructor_or_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be enrolled to access this lesson",
+        )
+    
+    material_repo = LessonMaterialRepository(db)
+    return material_repo.get_by_lesson(lesson_id)
+
+@router.get(
+    "/{course_id}/lessons/{lesson_id}/materials/{material_id}",
+    response_model=LessonMaterialOut,
+)
+def get_material(
+    course_id: str,
+    lesson_id: str,
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a specific material"""
+    from app.repositories.course_repository import CourseRepository, LessonRepository, LessonMaterialRepository
+    from app.models.enrollment import EnrollmentRepository
+    
+    # Verify course and lesson exist
+    course_repo = CourseRepository(db)
+    course = course_repo.get_by_id(course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    lesson_repo = LessonRepository(db)
+    lesson = lesson_repo.get_by_id(lesson_id)
+    if not lesson or lesson.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    # Verify access
+    enrollment_repo = EnrollmentRepository(db)
+    enrollment = enrollment_repo.get_by_user_and_course(current_user.id, course_id)
+    is_instructor_or_admin = current_user.role.value in ("ADMIN", "SUPER_ADMIN", "INSTRUCTOR")
+    
+    if not enrollment and not lesson.is_free and not is_instructor_or_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be enrolled to access this lesson",
+        )
+    
+    material_repo = LessonMaterialRepository(db)
+    material = material_repo.get_by_id(material_id)
+    if not material or material.lesson_id != lesson_id:
+        raise HTTPException(status_code=404, detail="Material not found")
+    
+    return material
+
+@router.patch(
+    "/{course_id}/lessons/{lesson_id}/materials/{material_id}",
+    response_model=LessonMaterialOut,
+    dependencies=[
+        Depends(require_roles(
+            UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR
+        ))
+    ],
+)
+def update_material(
+    course_id: str,
+    lesson_id: str,
+    material_id: str,
+    data: LessonMaterialUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update a material"""
+    from app.repositories.course_repository import CourseRepository, LessonRepository, LessonMaterialRepository
+    
+    # Verify course and lesson exist
+    course_repo = CourseRepository(db)
+    course = course_repo.get_by_id(course_id)
+    if not course or course.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    lesson_repo = LessonRepository(db)
+    lesson = lesson_repo.get_by_id(lesson_id)
+    if not lesson or lesson.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    material_repo = LessonMaterialRepository(db)
+    material = material_repo.get_by_id(material_id)
+    if not material or material.lesson_id != lesson_id:
+        raise HTTPException(status_code=404, detail="Material not found")
+    
+    # Update fields
+    if data.type is not None:
+        material.type = data.type
+    if data.title is not None:
+        material.title = data.title
+    if data.url is not None:
+        material.url = data.url
+    if data.content is not None:
+        material.content = data.content
+    if data.order_index is not None:
+        material.order_index = data.order_index
+    if data.file_size_kb is not None:
+        material.file_size_kb = data.file_size_kb
+    if data.duration_sec is not None:
+        material.duration_sec = data.duration_sec
+    
+    return material_repo.update(material)
+
+@router.delete(
+    "/{course_id}/lessons/{lesson_id}/materials/{material_id}",
+    status_code=204,
+    dependencies=[
+        Depends(require_roles(
+            UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR
+        ))
+    ],
+)
+def delete_material(
+    course_id: str,
+    lesson_id: str,
+    material_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a material"""
+    from app.repositories.course_repository import CourseRepository, LessonRepository, LessonMaterialRepository
+    
+    # Verify course and lesson exist
+    course_repo = CourseRepository(db)
+    course = course_repo.get_by_id(course_id)
+    if not course or course.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    lesson_repo = LessonRepository(db)
+    lesson = lesson_repo.get_by_id(lesson_id)
+    if not lesson or lesson.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    material_repo = LessonMaterialRepository(db)
+    material = material_repo.get_by_id(material_id)
+    if not material or material.lesson_id != lesson_id:
+        raise HTTPException(status_code=404, detail="Material not found")
+    
+    material_repo.delete(material)
+
+@router.put(
+    "/{course_id}/lessons/{lesson_id}/materials/reorder",
+    dependencies=[
+        Depends(require_roles(
+            UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR
+        ))
+    ],
+)
+def reorder_materials(
+    course_id: str,
+    lesson_id: str,
+    data: LessonMaterialReorder,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Reorder materials within a lesson"""
+    from app.repositories.course_repository import CourseRepository, LessonRepository, LessonMaterialRepository
+    
+    # Verify course and lesson exist
+    course_repo = CourseRepository(db)
+    course = course_repo.get_by_id(course_id)
+    if not course or course.organization_id != current_user.organization_id:
+        raise HTTPException(status_code=404, detail="Course not found")
+    
+    lesson_repo = LessonRepository(db)
+    lesson = lesson_repo.get_by_id(lesson_id)
+    if not lesson or lesson.course_id != course_id:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    material_repo = LessonMaterialRepository(db)
+    material_repo.reorder(lesson_id, data.materials)
+    
+    return {"message": "Materials reordered successfully"}

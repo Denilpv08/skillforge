@@ -1,6 +1,7 @@
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload, selectinload
+from sqlalchemy import select, func
 from app.models.quiz import Quiz, QuizAttempt
+from app.models.user import User
 
 class QuizRepository:
     def __init__(self, db: Session):
@@ -10,7 +11,7 @@ class QuizRepository:
         stmt = (
             select(Quiz)
             .options(
-                joinedload(Quiz.questions).joinedload(
+                selectinload(Quiz.questions).selectinload(
                     Quiz.questions.property.mapper.class_.answer_options
                 )
             )
@@ -25,7 +26,7 @@ class QuizRepository:
         stmt = (
             select(Quiz)
             .options(
-                joinedload(Quiz.questions).joinedload(
+                selectinload(Quiz.questions).selectinload(
                     Quiz.questions.property.mapper.class_.answer_options
                 )
             )
@@ -40,13 +41,19 @@ class QuizRepository:
         return quiz
 
     def get_attempts_by_user(
-        self, user_id: str, quiz_id: str
-    ) -> list[QuizAttempt]:
-        stmt = select(QuizAttempt).where(
+        self, user_id: str, quiz_id: str, page: int = 1, per_page: int = 20
+    ) -> tuple[list[QuizAttempt], int]:
+        base_stmt = select(QuizAttempt).where(
             QuizAttempt.user_id == user_id,
             QuizAttempt.quiz_id == quiz_id,
         )
-        return list(self.db.execute(stmt).scalars().all())
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        total = self.db.execute(count_stmt).scalar() or 0
+        
+        stmt = base_stmt.order_by(QuizAttempt.attempted_at.desc())
+        stmt = stmt.offset((page - 1) * per_page).limit(per_page)
+        attempts = list(self.db.execute(stmt).scalars().all())
+        return attempts, total
 
     def create_attempt(self, attempt: QuizAttempt) -> QuizAttempt:
         self.db.add(attempt)
@@ -54,8 +61,18 @@ class QuizRepository:
         self.db.refresh(attempt)
         return attempt
     
-    def get_all_attempts(self, quiz_id: str) -> list[QuizAttempt]:
-        stmt = select(QuizAttempt).where(
-            QuizAttempt.quiz_id == quiz_id
-        ).order_by(QuizAttempt.attempted_at.desc())
-        return list(self.db.execute(stmt).scalars().all())
+    def get_all_attempts_paginated(
+        self, quiz_id: str, page: int = 1, per_page: int = 20
+    ) -> tuple[list[QuizAttempt], int]:
+        base_stmt = (
+            select(QuizAttempt)
+            .options(joinedload(QuizAttempt.user))
+            .where(QuizAttempt.quiz_id == quiz_id)
+            .order_by(QuizAttempt.attempted_at.desc())
+        )
+        count_stmt = select(func.count()).where(QuizAttempt.quiz_id == quiz_id)
+        total = self.db.execute(count_stmt).scalar() or 0
+        
+        stmt = base_stmt.offset((page - 1) * per_page).limit(per_page)
+        attempts = list(self.db.execute(stmt).unique().scalars().all())
+        return attempts, total

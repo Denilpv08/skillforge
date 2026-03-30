@@ -12,12 +12,16 @@ import {
   useCourse,
   useCompleteLesson,
   useMyEnrollments,
+  useMaterials,
 } from "@/hooks/use-courses";
+import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import renderMarkdown from "./RenderMarkdown";
+import MaterialViewer from "./MaterialViewer";
+import MaterialUploader from "./MaterialUploader";
 
 const Lesson = () => {
   const { id: courseId, lessonId } = useParams<{
@@ -25,13 +29,22 @@ const Lesson = () => {
     lessonId: string;
   }>();
   const router = useRouter();
+  const { user } = useAuthStore();
 
   const { data: course } = useCourse(courseId);
   const { data: lesson, isLoading } = useLesson(courseId, lessonId);
+  const { data: materials = [], refetch: refetchMaterials } = useMaterials(
+    courseId,
+    lessonId,
+  );
   const { data: enrollments = [] } = useMyEnrollments();
   const completeLesson = useCompleteLesson();
 
   const enrollment = enrollments.find((e) => e.course_id === courseId);
+  const isInstructor =
+    user?.role === "INSTRUCTOR" ||
+    user?.role === "ADMIN" ||
+    user?.role === "SUPER_ADMIN";
 
   // Navegación entre lecciones
   const lessons = course?.lessons ?? [];
@@ -166,6 +179,33 @@ const Lesson = () => {
           </div>
         )}
       </div>
+
+      {/* Materiales de la lección */}
+      {materials.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Materiales complementarios ({materials.length})
+          </h3>
+          <div className="space-y-4">
+            {materials.map((material) => (
+              <MaterialViewer
+                key={material.id}
+                material={material}
+                lessonTitle={lesson?.title}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Uploader de materiales (solo instructores) */}
+      {isInstructor && (
+        <MaterialUploader
+          courseId={courseId}
+          lessonId={lessonId}
+          onMaterialAdded={() => refetchMaterials()}
+        />
+      )}
 
       {/* Acción completar */}
       {enrollment && (

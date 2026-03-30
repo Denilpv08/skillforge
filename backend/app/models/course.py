@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import String, Text, Enum, ForeignKey, DECIMAL, Boolean, SmallInteger
+from sqlalchemy import String, Text, Enum, ForeignKey, DECIMAL, Boolean, SmallInteger, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base_model import BaseModel
 
@@ -7,6 +7,14 @@ class CourseStatus(str, enum.Enum):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"
     ARCHIVED = "ARCHIVED"
+
+class MaterialType(str, enum.Enum):
+    VIDEO = "VIDEO"
+    DOCUMENT = "DOCUMENT"
+    PRESENTATION = "PRESENTATION"
+    CODE = "CODE"
+    LINK = "LINK"
+    FILE = "FILE"
 
 class Category(BaseModel):
     __tablename__ = "categories"
@@ -107,3 +115,33 @@ class Lesson(BaseModel):
     notes: Mapped[list["Note"]] = relationship(
         "Note", back_populates="lesson", cascade="all, delete-orphan"
     )
+    materials: Mapped[list["LessonMaterial"]] = relationship(
+        "LessonMaterial",
+        back_populates="lesson",
+        cascade="all, delete-orphan",
+        order_by="LessonMaterial.order_index",
+    )
+
+
+class LessonMaterial(BaseModel):
+    __tablename__ = "lesson_materials"
+
+    lesson_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("lessons.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    type: Mapped[MaterialType] = mapped_column(
+        Enum(MaterialType),
+        nullable=False,
+    )
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    order_index: Mapped[int] = mapped_column(SmallInteger, default=0, nullable=False)
+    file_size_kb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Relationships
+    lesson: Mapped["Lesson"] = relationship("Lesson", back_populates="materials")
