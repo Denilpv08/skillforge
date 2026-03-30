@@ -1,4 +1,3 @@
-import re
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, status
@@ -12,12 +11,11 @@ from app.schemas.course import (
     CategoryCreate, CourseCreate, CourseUpdate,
     LessonCreate, LessonUpdate,
 )
+from app.core.utils import slugify
+from app.core.rate_limit import logger
 
-def _slugify(text: str) -> str:
-    slug = text.lower().strip()
-    slug = re.sub(r"[^\w\s-]", "", slug)
-    slug = re.sub(r"[\s_]+", "-", slug)
-    return slug.strip("-")
+ALLOWED_COURSE_UPDATE_FIELDS = {"title", "description", "thumbnail_url", "category_id", "duration_hours", "status"}
+ALLOWED_LESSON_UPDATE_FIELDS = {"title", "content", "video_url", "order_index", "duration_min", "is_free"}
 
 class CategoryService:
     def __init__(self, db: Session):
@@ -109,8 +107,12 @@ class CourseService:
         course = self.get_by_id(course_id, org_id)
         self._check_ownership(course, current_user)
 
-        for field, value in data.model_dump(exclude_none=True).items():
-            setattr(course, field, value)
+        update_data = data.model_dump(exclude_none=True)
+        for field, value in update_data.items():
+            if field in ALLOWED_COURSE_UPDATE_FIELDS:
+                setattr(course, field, value)
+            else:
+                logger.warning("course_update_field_rejected", field=field, course_id=course_id)
 
         return self.repo.update(course)
 
@@ -143,8 +145,12 @@ class CourseService:
             )
         self._check_ownership(lesson.course, current_user)
 
-        for field, value in data.model_dump(exclude_none=True).items():
-            setattr(lesson, field, value)
+        update_data = data.model_dump(exclude_none=True)
+        for field, value in update_data.items():
+            if field in ALLOWED_LESSON_UPDATE_FIELDS:
+                setattr(lesson, field, value)
+            else:
+                logger.warning("lesson_update_field_rejected", field=field, lesson_id=lesson_id)
 
         return self.lesson_repo.update(lesson)
 

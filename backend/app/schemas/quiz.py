@@ -60,6 +60,24 @@ class QuizAttemptOut(BaseModel):
     attempted_at: datetime
 
     model_config = {"from_attributes": True}
+
+class QuizAttemptWithUser(QuizAttemptOut):
+    user_id: str
+    user_full_name: str | None = None
+    user_email: str | None = None
+
+class QuizResultsResponse(BaseModel):
+    quiz_id: str
+    quiz_title: str
+    pass_score: float
+    total_attempts: int
+    passed: int
+    failed: int
+    average_score: float
+    page: int
+    per_page: int
+    total: int
+    attempts: list[QuizAttemptWithUser]
     
 class AnswerReview(BaseModel):
     """Revisión de una respuesta tras el intento."""

@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db, get_current_user, require_roles
 from app.models.user import User, UserRole
 from app.models.quiz import Quiz, Question, AnswerOption, QuizAttempt
 from app.schemas.quiz import (
-    QuizCreate, QuizOut, QuizSubmit, QuizAttemptOut, QuizAttemptDetail, AnswerReview
+    QuizCreate, QuizOut, QuizSubmit, QuizAttemptOut, QuizAttemptDetail, AnswerReview, QuizResultsResponse, QuizAttemptWithUser
 )
 from app.services.quiz_service import QuizService
 from app.repositories.quiz_repository import QuizRepository
@@ -111,15 +111,19 @@ def submit_quiz(
 )
 def get_my_attempts(
     quiz_id: str,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Historial de intentos del usuario autenticado."""
+    """Historial de intentos del usuario autenticado con paginación."""
     repo = QuizRepository(db)
-    return repo.get_attempts_by_user(current_user.id, quiz_id)
+    attempts, _ = repo.get_attempts_by_user(current_user.id, quiz_id, page, per_page)
+    return attempts
 
 @router.get(
     "/{quiz_id}/results",
+    response_model=QuizResultsResponse,
     dependencies=[
         Depends(require_roles(
             UserRole.ADMIN, UserRole.SUPER_ADMIN, UserRole.INSTRUCTOR
@@ -128,41 +132,52 @@ def get_my_attempts(
 )
 def get_quiz_results(
     quiz_id: str,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Resultados de todos los estudiantes en un quiz.
+    Resultados de todos los estudiantes en un quiz con paginación.
     Solo para instructores y admins.
+    Optimizado con eager loading para evitar N+1.
     """
     repo = QuizRepository(db)
     quiz = repo.get_by_id(quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
-    attempts = repo.get_all_attempts(quiz_id)
-    return {
-        "quiz_id": quiz_id,
-        "quiz_title": quiz.title,
-        "pass_score": quiz.pass_score,
-        "total_attempts": len(attempts),
-        "passed": sum(1 for a in attempts if a.passed),
-        "failed": sum(1 for a in attempts if not a.passed),
-        "average_score": (
-            round(sum(float(a.score) for a in attempts) / len(attempts), 2)
-            if attempts else 0
-        ),
-        "attempts": [
-            {
-                "id": a.id,
-                "user_id": a.user_id,
-                "score": float(a.score),
-                "passed": a.passed,
-                "attempted_at": a.attempted_at.isoformat(),
-            }
-            for a in attempts
-        ],
-    }
+    attempts, total = repo.get_all_attempts_paginated(quiz_id, page, per_page)
+    
+    scores = [float(a.score) for a in attempts]
+    passed_count = sum(1 for a in attempts if a.passed)
+    
+    attempts_with_user = [
+        QuizAttemptWithUser(
+            id=a.id,
+            score=float(a.score),
+            passed=a.passed,
+            attempted_at=a.attempted_at,
+            user_id=a.user_id,
+            user_full_name=a.user.full_name if a.user else None,
+            user_email=a.user.email if a.user else None,
+        )
+        for a in attempts
+    ]
+
+    return QuizResultsResponse(
+        quiz_id=quiz_id,
+        quiz_title=quiz.title,
+        pass_score=float(quiz.pass_score),
+        total_attempts=total,
+        passed=passed_count,
+        failed=total - passed_count,
+        average_score=round(sum(scores) / len(scores), 2) if scores else 0,
+        page=page,
+        per_page=per_page,
+        total=total,
+        attempts=attempts_with_user,
+    )
     
 @router.get(
     "/attempts/{attempt_id}",

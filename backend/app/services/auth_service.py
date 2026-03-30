@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from jose import JWTError
 from sqlalchemy.exc import IntegrityError
-import re
+import time
 
 from app.models.user import User, UserRole
 from app.models.organization import Organization
@@ -15,12 +15,14 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
 )
+from app.core.utils import slugify
+from app.core.rate_limit import logger
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 
 class AuthService:
     """
     Lógica de negocio para autenticación.
-    Orquesta repositories y utilidades de seguridad.
+    Orchestra repositories y utilidades de seguridad.
     """
 
     def __init__(self, db: Session):
@@ -28,9 +30,11 @@ class AuthService:
         self.org_repo = OrganizationRepository(db)
 
     def register(self, data: RegisterRequest) -> TokenResponse:
-        slug = self._generate_slug(data.organization_name)
+        slug = slugify(data.organization_name)
+        logger.info("registration_attempt", org_slug=slug, email=data.email)
 
         if self.org_repo.get_by_slug(slug):
+            logger.warning("registration_failed_org_exists", org_slug=slug)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
@@ -40,12 +44,10 @@ class AuthService:
             )
 
         try:
-            # Crear organización SIN commit todavía
             org = Organization(name=data.organization_name, slug=slug)
             self.org_repo.db.add(org)
-            self.org_repo.db.flush()  # genera el ID sin hacer commit
+            self.org_repo.db.flush()
 
-            # Crear usuario SIN commit todavía
             user = User(
                 organization_id=org.id,
                 email=data.email,
@@ -55,11 +57,12 @@ class AuthService:
             )
             self.org_repo.db.add(user)
 
-            # Un solo commit atómico — si algo falla, NADA se guarda
             self.org_repo.db.commit()
             self.org_repo.db.refresh(user)
+            logger.info("registration_success", user_id=user.id, org_id=org.id)
         except IntegrityError:
             self.org_repo.db.rollback()
+            logger.error("registration_failed_integrity", org_slug=slug)
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Could not register due to duplicated organization or user data",
@@ -68,34 +71,49 @@ class AuthService:
         return self._build_token_response(user)
 
     def login(self, data: LoginRequest) -> TokenResponse:
-        # Buscar organización
         org = self.org_repo.get_by_slug(data.organization_slug)
-        if not org:
+        
+        if not org or not self._verify_with_timing(data.password, "" if not org else ""):
+            time.sleep(0.05)
+            logger.warning("login_failed", org_slug=data.organization_slug, email=data.email)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
             )
 
-        # Buscar usuario
         user = self.user_repo.get_by_email_and_org(data.email, org.id)
-        if not user or not verify_password(data.password, user.password_hash):
+        
+        if not user or not self._verify_with_timing(data.password, user.password_hash or ""):
+            time.sleep(0.05)
+            logger.warning("login_failed", org_slug=data.organization_slug, email=data.email)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
             )
 
+        logger.info("login_success", user_id=user.id, org_id=org.id)
         return self._build_token_response(user)
+
+    def _verify_with_timing(self, password: str, hashed: str | None) -> bool:
+        if not hashed:
+            return False
+        try:
+            return verify_password(password, hashed)
+        except Exception:
+            return False
 
     def refresh_token(self, refresh_token: str) -> TokenResponse:
         try:
             payload = decode_token(refresh_token)
             if payload.get("type") != "refresh":
+                logger.warning("refresh_token_invalid_type")
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token type",
                 )
             user_id: str = payload.get("sub")
-        except JWTError:
+        except JWTError as e:
+            logger.warning("refresh_token_failed", error=str(e))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or expired token",
@@ -103,11 +121,13 @@ class AuthService:
 
         user = self.user_repo.get_by_id(user_id)
         if not user or not user.is_active:
+            logger.warning("refresh_token_user_invalid", user_id=user_id)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found or inactive",
             )
 
+        logger.info("refresh_token_success", user_id=user.id)
         return self._build_token_response(user)
 
     def _build_token_response(self, user: User) -> TokenResponse:
@@ -121,10 +141,3 @@ class AuthService:
             access_token=create_access_token(token_data),
             refresh_token=create_refresh_token(token_data),
         )
-
-    @staticmethod
-    def _generate_slug(name: str) -> str:
-        slug = name.lower().strip()
-        slug = re.sub(r"[^\w\s-]", "", slug)
-        slug = re.sub(r"[\s_-]+", "-", slug)
-        return slug.strip("-")

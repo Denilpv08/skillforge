@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from app.models.course import Category, Course, Lesson, CourseStatus
+from app.models.course import Category, Course, Lesson, LessonMaterial, CourseStatus
 
 class CategoryRepository:
     def __init__(self, db: Session):
@@ -116,4 +116,45 @@ class LessonRepository:
 
     def delete(self, lesson: Lesson) -> None:
         self.db.delete(lesson)
+        self.db.commit()
+
+class LessonMaterialRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_by_lesson(self, lesson_id: str) -> list[LessonMaterial]:
+        stmt = (
+            select(LessonMaterial)
+            .where(LessonMaterial.lesson_id == lesson_id)
+            .order_by(LessonMaterial.order_index)
+        )
+        return list(self.db.execute(stmt).scalars().all())
+
+    def get_by_id(self, material_id: str) -> LessonMaterial | None:
+        return self.db.get(LessonMaterial, material_id)
+
+    def create(self, material: LessonMaterial) -> LessonMaterial:
+        self.db.add(material)
+        self.db.commit()
+        self.db.refresh(material)
+        return material
+
+    def update(self, material: LessonMaterial) -> LessonMaterial:
+        self.db.commit()
+        self.db.refresh(material)
+        return material
+
+    def delete(self, material: LessonMaterial) -> None:
+        self.db.delete(material)
+        self.db.commit()
+
+    def reorder(self, lesson_id: str, materials_order: list[dict]) -> None:
+        """
+        Reorder materials within a lesson.
+        materials_order: list of {id, order_index}
+        """
+        for item in materials_order:
+            material = self.get_by_id(item["id"])
+            if material and material.lesson_id == lesson_id:
+                material.order_index = item["order_index"]
         self.db.commit()

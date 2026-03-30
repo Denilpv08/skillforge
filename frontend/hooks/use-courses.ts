@@ -17,6 +17,7 @@ export function useCategories() {
   return useQuery({
     queryKey: courseKeys.categories,
     queryFn: coursesApi.getCategories,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -31,6 +32,7 @@ export function useCourses(
   return useQuery({
     queryKey: courseKeys.list(filters),
     queryFn: () => coursesApi.getCourses(filters),
+    staleTime: 1 * 60 * 1000,
   });
 }
 
@@ -39,6 +41,7 @@ export function useCourse(courseId: string) {
     queryKey: courseKeys.detail(courseId),
     queryFn: () => coursesApi.getCourse(courseId),
     enabled: !!courseId,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -46,6 +49,7 @@ export function useMyEnrollments() {
   return useQuery({
     queryKey: courseKeys.enrollments,
     queryFn: coursesApi.getMyEnrollments,
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -184,6 +188,14 @@ export function useLesson(courseId: string, lessonId: string) {
   });
 }
 
+export function useMaterials(courseId: string, lessonId: string) {
+  return useQuery({
+    queryKey: ["materials", courseId, lessonId],
+    queryFn: () => coursesApi.getMaterials(courseId, lessonId),
+    enabled: !!courseId && !!lessonId,
+  });
+}
+
 export function useCreateLesson(courseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -237,6 +249,43 @@ export function useReorderLessons(courseId: string) {
       coursesApi.reorderLessons(courseId, lessonIds),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+    },
+  });
+}
+
+// ─── Material Mutations ────────────────────────────────────────
+export function useDeleteMaterial(courseId: string, lessonId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (materialId: string) =>
+      coursesApi.deleteMaterial(courseId, lessonId, materialId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["materials", courseId, lessonId],
+      });
+      toast.success("Material eliminado");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.detail ?? "Error al eliminar");
+    },
+  });
+}
+
+export function useUpdateMaterial(courseId: string, lessonId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ materialId, data }: { materialId: string; data: any }) =>
+      coursesApi.updateMaterial(courseId, lessonId, materialId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["materials", courseId, lessonId],
+      });
+      toast.success("Material actualizado");
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.detail ?? "Error al actualizar material",
+      );
     },
   });
 }
